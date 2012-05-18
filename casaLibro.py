@@ -12,8 +12,12 @@ import sys
 
 class Search:
     busqueda = None
+
+    def __init__(self):
+        busqueda = 'None'
     def getbusqueda(self):
         return self.busqueda
+
     def setbusqueda(self,value):
         self.busqueda = value
 
@@ -85,9 +89,8 @@ class GUI:
                         "gtk_main_quit": self.confirmarSalida,
                         "onButtonClick": self.onButtonClick,
                         "onSelectID":self.onSelectID,
-                        "onSelectName":self.onSelectName,
                         "onAboutClose":self.onAboutClose,
-
+                        "onMessageClose":self.onMessageClose,
                         }
         
         self.builder.connect_signals(self.handlers)
@@ -108,36 +111,128 @@ class GUI:
         print "Has pulsado menu buscar"
 
     def onButtonClick(self,button):
+
         if (button.get_label() == "Buscar"):
             entradaBuscar = self.builder.get_object("entry1")
-            search.setbusqueda(decodifica(entradaBuscar.get_text()))
-            entradaBuscar.set_sensitive(False)
-            
-            botonBuscar = self.builder.get_object("button1")
-            botonBuscar.set_sensitive(False)
-            scrapeando()
-            self.menuOpcionesConsultar(self)
+            busqueda = decodifica(entradaBuscar.get_text()).replace(' ','+')
 
-        if (button.get_label() == "Volver"):
-            print "Destroy la BD"
+            if busqueda != '' and busqueda != None:
+                print entradaBuscar
+                search.setbusqueda(decodifica(entradaBuscar.get_text()).replace(' ','+'))
+                entradaBuscar.set_sensitive(False)
+                
+                botonBuscar = self.builder.get_object("button1")
+                botonBuscar.set_sensitive(False)
+
+                scrapeando()
+                self.menuOpcionesConsultar(self)
+            else :
+                self.mensajeError()
+
+        elif (button.get_label() == "Volver"):
+            self.clean()
+            self.principal()
+
+        elif (button.get_label() == "Modificar"):
+            print "Actualizar datos"
+            self.update()
+            print "hace commit"
+            db.conexion.commit()
+            self.clean()
+            self.principal()
+
+        elif (button.get_label() == "Eliminar"):
+            self.clean()
+            self.principal()
+        else:
+            self.mensajeError()
+
+    def principal(self):
             windows = self.builder.get_object("window1")
             windows.show_all()
             parent = self.builder.get_object("window2")
             parent.hide()
-            if self.db:
-                self.db.destroy()
-                self.db.__init__()
             entradaBuscar = self.builder.get_object("entry1")
             entradaBuscar.set_sensitive(True)
 
             botonBuscar = self.builder.get_object("button1")
-            botonBuscar.set_sensitive(True)
+            botonBuscar.set_sensitive(True)  
 
+    def delete(self):
+        idEntrada = self.builder.get_object("comboboxtext1")
+        id = idEntrada.get_active_text()
+        query = "DELETE FROM book WHERE id="+str(id)+";"
+        self.db.micursor.execute(query)
+        self.mensajeOK()
+
+    def clean(self):
+        idEntrada = self.builder.get_object("comboboxtext1")
+        id = idEntrada.set_active(-1)
+
+        nombreEntrada = self.builder.get_object("comboboxtext2")
+        nombre = nombreEntrada.set_text("")
+
+        nombreEntrada = self.builder.get_object("entry2")
+        nombre = nombreEntrada.set_text("")
+
+        autorEntrada = self.builder.get_object("entry3")
+        autor = autorEntrada.set_text("")
+
+        editorialEntrada = self.builder.get_object("entry4")
+        editorial = editorialEntrada.set_text("")
+
+        anioEntrada = self.builder.get_object("entry5")
+        anio = anioEntrada.set_text("")
+
+        precioEntrada = self.builder.get_object("linkbutton1")
+        precioEntrada.set_uri('')    
+
+        precio = precioEntrada.set_label('')    
+
+    def update(self):
+        idEntrada = self.builder.get_object("comboboxtext1")
+        id = idEntrada.get_active_text()
+
+        nombreEntrada = self.builder.get_object("comboboxtext2")
+        nombre = nombreEntrada.get_text()
+
+        autorEntrada = self.builder.get_object("entry2")
+        autor = autorEntrada.get_text()
+
+        editorialEntrada = self.builder.get_object("entry3")
+        editorial = editorialEntrada.get_text()
+
+        editorialEntrada = self.builder.get_object("entry4")
+        fecha = editorialEntrada.get_text()
+
+        precioEntrada = self.builder.get_object("entry5")
+        precio = precioEntrada.get_text()
+
+
+        if (id == '' or nombre == '' or autor == '' or editorial =='' or precio =='' or fecha==''):
+            print "error"
+            self.mensajeError()
+        else:
+            #
+            query = "update book set Nombre='" + str(nombre) + "' ,Autor='" + str(autor) + "',Editorial='" + str(editorial) + "',Precio='" + str(precio) + "' ,Fecha='" + str(fecha) + "' where id='" + str(id) + "';"
+            print query
+            self.mensajeOK()
+            self.db.micursor.execute(query)
+    def onMessageClose(self,button):
+        self.about = self.builder.get_object("messagedialog1")
+        self.about.hide()
+        self.about = self.builder.get_object("messagedialog2")
+        self.about.hide()
+          
     def menuOpcionesConsultar(self,entry):
         windows = self.builder.get_object("window2")
         windows.show_all()
         parent = self.builder.get_object("window1")
         parent.hide()
+
+        boton = self.builder.get_object("button2")
+        boton.hide()
+
         print "Has pulsado menuOpcionesConsultar"
  
         #id = self.builder.get_object("label2")
@@ -145,8 +240,7 @@ class GUI:
         idText = self.builder.get_object("comboboxtext1")
         idText.set_sensitive(True)
 
-        nombre = self.builder.get_object("comboboxtext2")
-        nombre.set_sensitive(True)
+
 
         #boton = self.builder.get_object("button3")
         #boton.set_label("Obtener")
@@ -159,45 +253,19 @@ class GUI:
         for i in id:
             idText.insert(-1,None,str(i['id']))
 
-        query = "SELECT Nombre FROM book;"
 
-        self.db.micursor.execute(query)
-        id = self.db.micursor.fetchall()
-        nombre.remove_all()
-        for i in id:
-            nombre.insert(-1,None,str(i['Nombre']))
+    def mensajeOK(self):
+            windows = self.builder.get_object("messagedialog1")
+            mensaje = self.builder.get_object("label9")
+            mensaje.set_label("todo correcto")
+            windows.show_all()
 
-    def onSelectName(self,entry):
-        nombreEntrada = self.builder.get_object("comboboxtext2")
-        nombre = nombreEntrada.get_active_text()
-
-        query = "SELECT * FROM book WHERE Nombre="+ str(nombre) +";"
-        self.db.micursor.execute(query)
-
-        registros = self.db.micursor.fetchone()
-        print registros
-
-
-        idEntrada = self.builder.get_object("comboboxtext1")
-        id = idEntrada.set_active(int(registros['id']))
-
-        autorEntrada = self.builder.get_object("entry2")
-        autor = autorEntrada.set_text(str(registros['Autor']))
-
-        editorialEntrada = self.builder.get_object("entry3")
-        editorial = editorialEntrada.set_text(str(registros['Editorial']))
-
-        editorialEntrada = self.builder.get_object("entry4")
-        editorial = editorialEntrada.set_text(str(registros['Fecha']))
-
-        precioEntrada = self.builder.get_object("entry5")
-        precio = precioEntrada.set_text(str(registros['Precio']))
-
-        precioEntrada = self.builder.get_object("linkbutton1")
-        precioEntrada.set_uri(str(registros['Link']))    
-
-        precio = precioEntrada.set_label(str(registros['Link']))
-
+    def mensajeError(self):
+            windows = self.builder.get_object("messagedialog2")
+            mensaje = self.builder.get_object("label10")
+            mensaje.set_label("Error")
+            windows.show_all()
+ 
     def onSelectID(self,entry):
         idEntrada = self.builder.get_object("comboboxtext1")
         id = idEntrada.get_active_text()
@@ -209,7 +277,7 @@ class GUI:
         print registros
 
         nombreEntrada = self.builder.get_object("comboboxtext2")
-        nombre = nombreEntrada.set_active(int(registros['id']))
+        nombre = nombreEntrada.set_text(str(registros['Nombre']))
 
         autorEntrada = self.builder.get_object("entry2")
         autor = autorEntrada.set_text(str(registros['Autor']))
@@ -232,9 +300,55 @@ class GUI:
 
     def menuOpcionesEliminar(self,entry):
         print "Has pulsado menuOpcionesEliminar"
- 
+        windows = self.builder.get_object("window2")
+        windows.show_all()
+        parent = self.builder.get_object("window1")
+        parent.hide()
+
+        boton = self.builder.get_object("button2")
+        boton.show()
+        boton.set_label("Eliminar")
+
+        idText = self.builder.get_object("comboboxtext1")
+        idText.set_sensitive(True)
+
+
+
+        query = "SELECT id FROM book WHERE 1;"
+
+        self.db.micursor.execute(query)
+        id = self.db.micursor.fetchall()
+        idText.remove_all()
+        for i in id:
+            idText.insert(-1,None,str(i['id']))
+
     def menuOpcionesModificar(self,entry):
         print "Has pulsado menuOpcionesModificar"
+        windows = self.builder.get_object("window2")
+        windows.show_all()
+        parent = self.builder.get_object("window1")
+        parent.hide()
+
+        boton = self.builder.get_object("button2")
+        boton.show()
+        boton.set_label("Modificar")
+
+ 
+        #id = self.builder.get_object("label2")
+        #id.set_sensitive(True)
+        idText = self.builder.get_object("comboboxtext1")
+        idText.set_sensitive(True)
+
+
+
+        query = "SELECT id FROM book WHERE 1;"
+
+        self.db.micursor.execute(query)
+        id = self.db.micursor.fetchall()
+        idText.remove_all()
+        for i in id:
+            idText.insert(-1,None,str(i['id']))
+
 
     def menuAbout(self,entry):
         windows = self.builder.get_object("aboutdialog1")     
